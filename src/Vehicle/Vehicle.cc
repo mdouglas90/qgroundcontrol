@@ -501,6 +501,9 @@ void Vehicle::_mavlinkMessageReceived(LinkInterface* link, mavlink_message_t mes
     case MAVLINK_MSG_ID_WIND:
         _handleWind(message);
         break;
+    case MAVLINK_MSG_ID_HIGH_LATENCY:
+        _handleHighLatency(message);
+        break;
     }
 
     emit mavlinkMessageReceived(message);
@@ -846,6 +849,76 @@ void Vehicle::_handleRCChannelsRaw(mavlink_message_t& message)
 
     emit remoteControlRSSIChanged(channels.rssi);
     emit rcChannelsChanged(channelCount, pwmValues);
+}
+
+void Vehicle::_handleHighLatency(mavlink_message_t& message)
+{
+    // Decode Array
+    mavlink_high_latency_t highLatency;
+    mavlink_msg_mission_item_decode(&message, &highLatency);
+
+    /*
+    <field name="base_mode" type="uint8_t">System mode bitfield, see MAV_MODE_FLAG ENUM in mavlink/include/mavlink_types.h</field>
+    <field name="custom_mode" type="uint32_t">A bitfield for use for autopilot-specific flags.</field>
+    */
+    if (highLatency.base_mode != _base_mode || highLatency.custom_mode != _custom_mode) {
+        _base_mode = highLatency.base_mode;
+        _custom_mode = highLatency.custom_mode;
+        emit flightModeChanged(flightMode());
+    }
+
+    /*
+    <field name="landed_state" type="uint8_t" enum="MAV_LANDED_STATE">The landed state. Is set to MAV_LANDED_STATE_UNDEFINED if landed state is unknown.</field>
+    */
+    switch (highLatency.landed_state) {
+    case MAV_LANDED_STATE_UNDEFINED:
+        break;
+    case MAV_LANDED_STATE_ON_GROUND:
+        setFlying(false);
+        break;
+    case MAV_LANDED_STATE_IN_AIR:
+        setFlying(true);
+        return;
+    }
+
+    /*
+    <field name="roll" type="int16_t">roll (centidegrees)</field>
+    <field name="pitch" type="int16_t">pitch (centidegrees)</field>
+    <field name="heading" type="uint16_t">heading (centidegrees)</field>
+    */
+    _updateAttitude(null, (double)(highLatency.roll)/10, (double)(highLatency.pitch)/10, (double)(highLatency.yaw)/10, 0);
+
+    /*
+    <field name="latitude" type="int32_t">Latitude, expressed as degrees * 1E7</field>
+    <field name="longitude" type="int32_t">Longitude, expressed as degrees * 1E7</field>
+    */
+    setLatitude((double)(highLatency.latitude)/1e7);
+    setLongitude((double)(highLatency.longitude)/1e7);
+
+    /*
+    <field name="altitude_home" type="int16_t">Altitude above the home position (meters)</field>
+    <field name="altitude_amsl" type="int16_t">Altitude above mean sea level (meters)</field>
+    <field name="climb_rate" type="int8_t">climb rate (m/s)</field>
+    */
+    void _updateAltitude(null, highLatency.altitude_amsl, dhighLatency.altitude_home, highLatency.climb_rate, 0);
+
+    /*
+    <field name="battery_remaining" type="uint8_t">Remaining battery (percentage)</field>
+    */
+    _batteryFactGroup.percentRemaining()->setRawValue(highLatency.battery_remaining);
+    if (highLatency.battery_remaining > 0 && highLatency.battery_remaining < QGroundControlQmlGlobal::batteryPercentRemainingAnnounce()->rawValue().toInt()) {
+        if (!_lowBatteryAnnounceTimer.isValid() || _lowBatteryAnnounceTimer.elapsed() > _lowBatteryAnnounceRepeatMSecs) {
+            _lowBatteryAnnounceTimer.restart();
+            _say(QString("%1 low battery: %2 percent remaining").arg(_vehicleIdSpeech()).arg(highLatency.battery_remaining));
+        }
+    }
+
+    /*
+    <field name="temperature" type="int8_t">Autopilot temperature (degrees C)</field>
+    <field name="temperature_air" type="int8_t">Air temperature (degrees C) from airspeed sensor</field>
+    <field name="failsafe" type="uint8_t">failsafe (each bit represents a failsafe where 0=ok, 1=failsafe active (bit0:RC, bit1:batt, bit2:GPS, bit3:GCS, bit4:fence)</field>
+    */
+    // TODO: NOT IMPLEMENTED???
 }
 
 bool Vehicle::_containsLink(LinkInterface* link)

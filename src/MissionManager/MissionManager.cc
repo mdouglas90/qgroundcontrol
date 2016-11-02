@@ -496,6 +496,10 @@ void MissionManager::_mavlinkMessageReceived(const mavlink_message_t& message)
         case MAVLINK_MSG_ID_MISSION_CURRENT:
             _handleMissionCurrent(message);
             break;
+
+        case MAVLINK_MSG_ID_HIGH_LATENCY:
+            _handleMissionHighLatency(message);
+            break;
     }
 }
 
@@ -609,6 +613,22 @@ void MissionManager::_handleMissionCurrent(const mavlink_message_t& message)
     if (missionCurrent.seq != _currentMissionItem) {
         qCDebug(MissionManagerLog) << "_handleMissionCurrent seq:" << missionCurrent.seq;
         _currentMissionItem = missionCurrent.seq;
+        emit currentItemChanged(_currentMissionItem);
+    }
+}
+
+void MissionManager::_handleMissionHighLatency(consst mavlink_message_t& message)
+{
+    // Decode Array
+    mavlink_high_latency_t highLatency;
+    mavlink_msg_mission_item_decode(&message, &highLatency);
+
+    /*
+    <field name="wp_num" type="uint8_t">current waypoint number</field>
+    */
+    if (highLatency.wp_num != _currentMissionItem) {
+        qCDebug(MissionManagerLog) << "_handleMissionCurrent seq:" << highLatency.wp_num;
+        _currentMissionItem = highLatency.wp_num;
         emit currentItemChanged(_currentMissionItem);
     }
 }

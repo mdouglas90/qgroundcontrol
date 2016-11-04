@@ -749,8 +749,9 @@ void UAS::receiveMessage(mavlink_message_t message)
         {
             // Decode Array
             mavlink_high_latency_t highLatency;
-            mavlink_msg_mission_item_decode(&message, &highLatency);
-
+            mavlink_msg_high_latency_decode(&message, &highLatency);
+            quint64 time = getUnixTimeFromMs(out.time_boot_ms);
+            
             /*
             <field name="throttle" type="int8_t">throttle (percentage)</field>
             */

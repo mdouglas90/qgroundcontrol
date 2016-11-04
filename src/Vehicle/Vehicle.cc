@@ -855,7 +855,7 @@ void Vehicle::_handleHighLatency(mavlink_message_t& message)
 {
     // Decode Array
     mavlink_high_latency_t highLatency;
-    mavlink_msg_mission_item_decode(&message, &highLatency);
+    mavlink_msg_high_latency_decode(&message, &highLatency);
 
     /*
     <field name="base_mode" type="uint8_t">System mode bitfield, see MAV_MODE_FLAG ENUM in mavlink/include/mavlink_types.h</field>
@@ -886,7 +886,7 @@ void Vehicle::_handleHighLatency(mavlink_message_t& message)
     <field name="pitch" type="int16_t">pitch (centidegrees)</field>
     <field name="heading" type="uint16_t">heading (centidegrees)</field>
     */
-    _updateAttitude(null, (double)(highLatency.roll)/10, (double)(highLatency.pitch)/10, (double)(highLatency.yaw)/10, 0);
+    _updateAttitude(NULL, (double)(highLatency.roll)*M_PI/180.0/10.0, (double)(highLatency.pitch)*M_PI/180.0/10.0, (double)(highLatency.yaw)*M_PI/180.0/10.0, 0);
 
     /*
     <field name="latitude" type="int32_t">Latitude, expressed as degrees * 1E7</field>
@@ -900,7 +900,7 @@ void Vehicle::_handleHighLatency(mavlink_message_t& message)
     <field name="altitude_amsl" type="int16_t">Altitude above mean sea level (meters)</field>
     <field name="climb_rate" type="int8_t">climb rate (m/s)</field>
     */
-    void _updateAltitude(null, highLatency.altitude_amsl, dhighLatency.altitude_home, highLatency.climb_rate, 0);
+    _updateAltitude(null, highLatency.altitude_amsl, dhighLatency.altitude_home, highLatency.climb_rate, 0);
 
     /*
     <field name="battery_remaining" type="uint8_t">Remaining battery (percentage)</field>

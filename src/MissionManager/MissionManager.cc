@@ -621,7 +621,7 @@ void MissionManager::_handleMissionHighLatency(consst mavlink_message_t& message
 {
     // Decode Array
     mavlink_high_latency_t highLatency;
-    mavlink_msg_mission_item_decode(&message, &highLatency);
+    mavlink_msg_high_latency_decode(&message, &highLatency);
 
     /*
     <field name="wp_num" type="uint8_t">current waypoint number</field>
